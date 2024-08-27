@@ -134,9 +134,8 @@ namespace nanoFramework.Tools.FirmwareFlasher
                 if (latestVersion > currentVersion)
                 {
                     Console.ForegroundColor = ConsoleColor.DarkYellow;
-                    Console.WriteLine("** There is a new version available, update is recommended **");
-                    Console.WriteLine("** You should consider updating via the 'dotnet tool update -g nanoff' command **");
-                    Console.WriteLine("** If you have it installed on a specific path please check the instructions here: https://git.io/JiU0C **");
+                    Console.WriteLine("** There is a new version available **");
+                    Console.WriteLine("** Check the update instructions here: https://git.io/JiU0C **");
                     Console.ForegroundColor = ConsoleColor.White;
                 }
             }
@@ -211,9 +210,12 @@ namespace nanoFramework.Tools.FirmwareFlasher
 
 
 #if !VS_CODE_EXTENSION_BUILD
-            // perform version check
-            CheckVersion();
-            Console.WriteLine();
+            if (!o.SuppressNanoFFVersionCheck)
+            {
+                // perform version check
+                CheckVersion();
+                Console.WriteLine();
+            }
 #endif
 
             Console.ForegroundColor = ConsoleColor.White;
@@ -273,21 +275,39 @@ namespace nanoFramework.Tools.FirmwareFlasher
             // First check if we are asked for the list of available targets
             if (o.ListTargets)
             {
-                // get list from REFERENCE targets
-                var targets = FirmwarePackage.GetTargetList(
-                    false,
-                    o.Preview,
-                    o.Platform,
-                    _verbosityLevel);
+                List<CloudSmithPackageDetail> targets;
+                if (o.FromFwArchive)
+                {
+                    if (string.IsNullOrEmpty(o.FwArchivePath))
+                    {
+                        _exitCode = ExitCodes.E9000;
+                        _extraMessage = "--fwarchivepath is required when --fromfwarchive is specified.";
+                        return;
+                    }
 
-                // append list from COMMUNITY targets
-                targets = targets.Concat(
-                    FirmwarePackage.GetTargetList(
-                    true,
-                    o.Preview,
-                    o.Platform,
-                    _verbosityLevel)).ToList();
+                    // get the list from the archive
+                    targets = new FirmwareArchiveManager(o.FwArchivePath).GetTargetList(
+                        o.Preview,
+                        o.Platform,
+                        _verbosityLevel);
+                }
+                else
+                {
+                    // get list from REFERENCE targets
+                    targets = FirmwarePackage.GetTargetList(
+                        false,
+                        o.Preview,
+                        o.Platform,
+                        _verbosityLevel);
 
+                    // append list from COMMUNITY targets
+                    targets = targets.Concat(
+                        FirmwarePackage.GetTargetList(
+                        true,
+                        o.Preview,
+                        o.Platform,
+                        _verbosityLevel)).ToList();
+                }
                 Console.WriteLine("Available targets:");
 
                 DisplayBoardDetails(targets);
@@ -520,6 +540,37 @@ namespace nanoFramework.Tools.FirmwareFlasher
                 }
             }
 
+            #endregion
+
+            #region firmware archive update if no device is required
+            if (o.UpdateFwArchive)
+            {
+                // check for invalid options passed with platform option
+                if (o.FromFwArchive)
+                {
+                    _exitCode = ExitCodes.E9000;
+                    _extraMessage = "Incompatible options combined with --updatefwarchive.";
+                    return;
+                }
+                if (string.IsNullOrEmpty(o.FwArchivePath))
+                {
+                    _exitCode = ExitCodes.E9000;
+                    _extraMessage = "--fwarchivepath is required when --fromfwarchive is specified.";
+                    return;
+                }
+
+                if (!string.IsNullOrEmpty(o.TargetName))
+                {
+                    // The package can be downloaded without device connection
+                    _exitCode = await new FirmwareArchiveManager(o.FwArchivePath).DownloadFirmwareFromRepository(
+                        o.Preview,
+                        o.Platform,
+                        o.TargetName,
+                        o.FwVersion,
+                        _verbosityLevel);
+                    return;
+                }
+            }
             #endregion
 
             #region ESP32 platform options

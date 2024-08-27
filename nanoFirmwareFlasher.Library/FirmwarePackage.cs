@@ -1,11 +1,9 @@
-//
+﻿//
 // Copyright (c) .NET Foundation and Contributors
 // See LICENSE file in the project root for full license information.
 //
 
-using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
-using Microsoft.Extensions.Configuration;
 using nanoFramework.Tools.Debugger;
 using Newtonsoft.Json;
 using System;
@@ -205,19 +203,9 @@ namespace nanoFramework.Tools.FirmwareFlasher
         /// <summary>
         /// Download the firmware zip, extract this zip file, and get the firmware parts
         /// </summary>
-        /// <returns>a dictionary which keys are the start addresses and the values are the complete filenames (the bin files)</returns>
+        /// <returns>The result of the download and extract operation</returns>
         internal async Task<ExitCodes> DownloadAndExtractAsync()
         {
-            string fwFileName = null;
-
-            string downloadUrl = string.Empty;
-
-            // flag to signal if the work-flow step was successful
-            bool stepSuccessful = false;
-
-            // flag to skip download if the fw package exists and it's recent
-            bool skipDownload = false;
-
             // setup download folder
             // set download path
             try
@@ -236,14 +224,94 @@ namespace nanoFramework.Tools.FirmwareFlasher
                 LocationPath = Path.Combine(
                     LocationPathBase,
                     _targetName);
-
-                Directory.CreateDirectory(LocationPath);
             }
             catch
             {
                 Console.WriteLine("");
 
                 return ExitCodes.E9006;
+            }
+
+            // download the firmware package
+            var (exitCode, fwFileName) = await DownloadPackageAsync(LocationPath, true, true);
+            if (exitCode != ExitCodes.OK)
+            {
+                return exitCode;
+            }
+
+            // unzip the firmware
+            if (Verbosity >= VerbosityLevel.Normal)
+            {
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write($"Extracting {Path.GetFileName(fwFileName)}...");
+            }
+
+            ZipFile.ExtractToDirectory(
+                Path.Combine(LocationPath, fwFileName),
+                LocationPath);
+
+            if (Verbosity >= VerbosityLevel.Normal)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("OK");
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+
+            // be nice to the user and delete any fw packages older than a month
+            Directory.GetFiles(LocationPath)
+                     .Select(f => new FileInfo(f))
+                     .Where(f => f.Extension == ".zip" && f.LastWriteTime < DateTime.Now.AddMonths(-1))
+                     .ToList()
+                     .ForEach(f => f.Delete());
+
+            PostProcessDownloadAndExtract();
+
+            if (Verbosity >= VerbosityLevel.Normal)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+
+                Console.WriteLine("");
+                Console.WriteLine($"Updating to {Version}");
+                Console.WriteLine("");
+
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+
+            return ExitCodes.OK;
+        }
+
+        /// <summary>
+        /// Download the firmware zip to the <paramref name="locationPath"/>.
+        /// </summary>
+        /// <param name="locationPath">The directory to download the zip file to</param>
+        /// <param name="useExistingIfDownloadFails">If the download fails and there is a matching zip file present, use that zip instead.
+        /// The match is done by version only, so pass <c>true</c> only if the <paramref name="locationPath"/> is specific for the target.</param>
+        /// <param name="cleanupUnpackedFiles">Removes existing files in <paramref name="locationPath"/> with the same extensions as files that can be present in the zip file.</param>
+        /// <returns>The result of the operation, and the file name of the downloaded file in case of success.</returns>
+        internal async Task<(ExitCodes exitCode, string fwFileName)> DownloadPackageAsync(string locationPath, bool useExistingIfDownloadFails, bool cleanupUnpackedFiles)
+        {
+            LocationPath = locationPath;
+
+            string fwFileName = null;
+
+            string downloadUrl = string.Empty;
+
+            // flag to signal if the work-flow step was successful
+            bool stepSuccessful = false;
+
+            // flag to skip download if the fw package exists and it's recent
+            bool skipDownload = false;
+
+            // create the download folder
+            try
+            {
+                Directory.CreateDirectory(LocationPath);
+            }
+            catch
+            {
+                Console.WriteLine("");
+
+                return (ExitCodes.E9006, null);
             }
 
             List<FileInfo> fwFiles = [];
@@ -266,7 +334,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
             }
 
 
-            if (!skipDownload)
+            if (!skipDownload) // this condition is always true
             {
                 // try to get download URL
                 DownloadUrlResult downloadResult = await GetDownloadUrlAsync(
@@ -277,7 +345,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
 
                 if (downloadResult.Outcome != ExitCodes.OK)
                 {
-                    return downloadResult.Outcome;
+                    return (downloadResult.Outcome, null);
                 }
 
                 downloadUrl = downloadResult.Url;
@@ -288,16 +356,19 @@ namespace nanoFramework.Tools.FirmwareFlasher
                 stepSuccessful = !string.IsNullOrEmpty(downloadUrl);
             }
 
-            // cleanup any fw file in the folder
-            var filesToDelete = Directory.EnumerateFiles(LocationPath, "*.bin").ToList();
-            filesToDelete.AddRange(Directory.EnumerateFiles(LocationPath, "*.hex").ToList());
-            filesToDelete.AddRange(Directory.EnumerateFiles(LocationPath, "*.s19").ToList());
-            filesToDelete.AddRange(Directory.EnumerateFiles(LocationPath, "*.dfu").ToList());
-            filesToDelete.AddRange(Directory.EnumerateFiles(LocationPath, "*.csv").ToList());
-
-            foreach (var file in filesToDelete)
+            if (cleanupUnpackedFiles)
             {
-                File.Delete(file);
+                // cleanup any fw file in the folder
+                var filesToDelete = Directory.EnumerateFiles(LocationPath, "*.bin").ToList();
+                filesToDelete.AddRange(Directory.EnumerateFiles(LocationPath, "*.hex").ToList());
+                filesToDelete.AddRange(Directory.EnumerateFiles(LocationPath, "*.s19").ToList());
+                filesToDelete.AddRange(Directory.EnumerateFiles(LocationPath, "*.dfu").ToList());
+                filesToDelete.AddRange(Directory.EnumerateFiles(LocationPath, "*.csv").ToList());
+
+                foreach (var file in filesToDelete)
+                {
+                    File.Delete(file);
+                }
             }
 
             // check for file existence or download one
@@ -336,7 +407,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
                             }
                             else
                             {
-                                return ExitCodes.E9007;
+                                return (ExitCodes.E9007, null);
                             }
                         }
 
@@ -392,7 +463,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
                 // couldn't download the fw file
                 // check if there is one available
 
-                if (fwFiles.Any())
+                if (useExistingIfDownloadFails && fwFiles.Any())
                 {
                     if (string.IsNullOrEmpty(Version))
                     {// take the 1st one
@@ -406,7 +477,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
 
                     if (string.IsNullOrEmpty(fwFileName))
                     {
-                        return ExitCodes.E9007;
+                        return (ExitCodes.E9007, null);
                     }
 
                     // get the version form the file name
@@ -430,55 +501,23 @@ namespace nanoFramework.Tools.FirmwareFlasher
                     if (Verbosity > VerbosityLevel.Quiet)
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("Failure to download package and couldn't find one in the cache.");
+                        if (useExistingIfDownloadFails)
+                        {
+                            Console.WriteLine("Failure to download package and couldn't find one in the cache.");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Failure to download package.");
+                        }
                         Console.ForegroundColor = ConsoleColor.White;
                     }
 
-                    return ExitCodes.E9007;
+                    return (ExitCodes.E9007, null);
                 }
             }
 
             // got here, must have a file!
-
-            // unzip the firmware
-            if (Verbosity >= VerbosityLevel.Normal)
-            {
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.Write($"Extracting {Path.GetFileName(fwFileName)}...");
-            }
-
-            ZipFile.ExtractToDirectory(
-                Path.Combine(LocationPath, fwFileName),
-                LocationPath);
-
-            if (Verbosity >= VerbosityLevel.Normal)
-            {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("OK");
-                Console.ForegroundColor = ConsoleColor.White;
-            }
-
-            // be nice to the user and delete any fw packages older than a month
-            Directory.GetFiles(LocationPath)
-                     .Select(f => new FileInfo(f))
-                     .Where(f => f.Extension == ".zip" && f.LastWriteTime < DateTime.Now.AddMonths(-1))
-                     .ToList()
-                     .ForEach(f => f.Delete());
-
-            PostProcessDownloadAndExtract();
-
-            if (Verbosity >= VerbosityLevel.Normal)
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-
-                Console.WriteLine("");
-                Console.WriteLine($"Updating to {Version}");
-                Console.WriteLine("");
-
-                Console.ForegroundColor = ConsoleColor.White;
-            }
-
-            return ExitCodes.OK;
+            return (ExitCodes.OK, fwFileName);
         }
 
         private static async Task<DownloadUrlResult> GetDownloadUrlAsync(
