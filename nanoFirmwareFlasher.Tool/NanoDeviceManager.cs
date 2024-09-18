@@ -1,9 +1,9 @@
-﻿using nanoFramework.Tools.Debugger;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+using nanoFramework.Tools.Debugger;
 
 namespace nanoFramework.Tools.FirmwareFlasher
 {
@@ -52,6 +52,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
                 exitCode = await _nanoDeviceOperations.UpdateDeviceClrAsync(
                     _options.SerialPort,
                     _options.FwVersion,
+                    _options.FromFwArchive ? _options.FwArchivePath : null,
                     _options.ClrFile,
                     _verbosityLevel);
 

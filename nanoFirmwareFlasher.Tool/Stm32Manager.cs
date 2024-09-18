@@ -1,7 +1,5 @@
-﻿//
-// Copyright (c) .NET Foundation and Contributors
-// See LICENSE file in the project root for full license information.
-//
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Linq;
@@ -50,26 +48,26 @@ namespace nanoFramework.Tools.FirmwareFlasher
             {
                 var connecteDevices = StmDfuDevice.ListDevices();
 
-                Console.ForegroundColor = ConsoleColor.Cyan;
+                OutputWriter.ForegroundColor = ConsoleColor.Cyan;
 
                 if (connecteDevices.Count() == 0)
                 {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine("No DFU devices found");
+                    OutputWriter.ForegroundColor = ConsoleColor.Yellow;
+                    OutputWriter.WriteLine("No DFU devices found");
                 }
                 else
                 {
-                    Console.WriteLine("-- Connected DFU devices --");
+                    OutputWriter.WriteLine("-- Connected DFU devices --");
 
                     foreach ((string serial, string device) device in connecteDevices)
                     {
-                        Console.WriteLine($"{device.serial} @ {device.device}");
+                        OutputWriter.WriteLine($"{device.serial} @ {device.device}");
                     }
 
-                    Console.WriteLine("---------------------------");
+                    OutputWriter.WriteLine("---------------------------");
                 }
 
-                Console.ForegroundColor = ConsoleColor.White;
+                OutputWriter.ForegroundColor = ConsoleColor.White;
 
                 // done here, this command has no further processing
                 return ExitCodes.OK;
@@ -79,25 +77,25 @@ namespace nanoFramework.Tools.FirmwareFlasher
             {
                 var connecteDevices = StmJtagDevice.ListDevices();
 
-                Console.ForegroundColor = ConsoleColor.Cyan;
+                OutputWriter.ForegroundColor = ConsoleColor.Cyan;
 
                 if (connecteDevices.Count == 0)
                 {
-                    Console.WriteLine("No JTAG devices found");
+                    OutputWriter.WriteLine("No JTAG devices found");
                 }
                 else
                 {
-                    Console.WriteLine("-- Connected JTAG devices --");
+                    OutputWriter.WriteLine("-- Connected JTAG devices --");
 
                     foreach (string deviceId in connecteDevices)
                     {
-                        Console.WriteLine(deviceId);
+                        OutputWriter.WriteLine(deviceId);
                     }
 
-                    Console.WriteLine("---------------------------");
+                    OutputWriter.WriteLine("---------------------------");
                 }
 
-                Console.ForegroundColor = ConsoleColor.White;
+                OutputWriter.ForegroundColor = ConsoleColor.White;
 
                 // done here, this command has no further processing
                 return ExitCodes.OK;
@@ -126,7 +124,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
 
                 if (_verbosityLevel >= VerbosityLevel.Normal)
                 {
-                    Console.WriteLine($"Connected to JTAG device with ID {dfuDevice.DfuId}");
+                    OutputWriter.WriteLine($"Connected to JTAG device with ID {dfuDevice.DfuId}");
                 }
 
                 // set verbosity
@@ -168,7 +166,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
 
                 if (_verbosityLevel >= VerbosityLevel.Normal)
                 {
-                    Console.WriteLine($"Connected to JTAG device with ID {jtagDevice.JtagId}");
+                    OutputWriter.WriteLine($"Connected to JTAG device with ID {jtagDevice.JtagId}");
                 }
 
                 // set verbosity
@@ -225,6 +223,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
                         _options.TargetName,
                         _options.FwVersion,
                         _options.Preview,
+                        _options.FromFwArchive ? _options.FwArchivePath : null,
                         true,
                         _options.DeploymentImage,
                         appFlashAddress,
@@ -281,6 +280,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
                                     _options.TargetName,
                                     null,
                                     false,
+                                    null,
                                     false,
                                     _options.DeploymentImage,
                                     appFlashAddress,
