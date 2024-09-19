@@ -126,7 +126,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
                 return ExitCodes.E9005;
             }
 
-            var result = ExitCodes.OK;
+            ExitCodes result = ExitCodes.OK;
 
             foreach ((CloudSmithPackageDetail remoteTarget, Version _) in remoteTargets.Values)
             {

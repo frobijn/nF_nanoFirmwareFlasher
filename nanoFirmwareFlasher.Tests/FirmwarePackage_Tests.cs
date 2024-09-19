@@ -181,13 +181,13 @@ namespace nanoFirmwareFlasher.Tests
 
             Assert.AreEqual(ExitCodes.OK, exitCode);
             Assert.IsTrue(Directory.Exists(Path.Combine(cacheDirectory, targetName)));
-            string[] files = (from f in Directory.GetFiles(Path.Combine(cacheDirectory, targetName))
-                              select Path.GetFileName(f)).ToArray();
-            Assert.AreEqual(1, (from f in files
-                                where f.StartsWith(targetName + "-") && Path.GetExtension(f) == ".dll"
-                                select f).Count());
-            Assert.IsTrue(File.Exists(Path.Combine(cacheDirectory, targetName, "nanoCLR.bin")));
-            Assert.AreEqual(2, files.Length);
+            string[] directories = (from d in Directory.GetDirectories(Path.Combine(cacheDirectory, targetName))
+                                    select Path.GetFileName(d)).ToArray();
+            Assert.AreEqual(1, (from d in directories
+                                where d.StartsWith(targetName + "-")
+                                select d).Count());
+            Assert.IsTrue(File.Exists(Path.Combine(cacheDirectory, targetName, directories[0], "nanoFramework.nanoCLR.dll")));
+            Assert.AreEqual(1, directories.Length);
             #endregion
         }
 

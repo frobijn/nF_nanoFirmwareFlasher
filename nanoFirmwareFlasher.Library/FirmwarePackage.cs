@@ -37,7 +37,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                     ".nanoFramework",
                     "fw_cache");
-        private static readonly ThreadLocal<string> s_locationPathBase = new ThreadLocal<string>();
+        private static readonly ThreadLocal<string> s_locationPathBase = new();
 
         /// <summary>
         /// Path with the base location for firmware packages.
@@ -243,31 +243,23 @@ namespace nanoFramework.Tools.FirmwareFlasher
                 return exitCode;
             }
 
-            // unzip the firmware
-            if (Verbosity >= VerbosityLevel.Normal)
+            if (fwFileName.EndsWith(".zip"))
             {
-                OutputWriter.ForegroundColor = ConsoleColor.White;
-                OutputWriter.Write($"Extracting {Path.GetFileName(fwFileName)}...");
-            }
-            if (fwFileName.EndsWith(".dll"))
-            {
-                File.Copy(
-                    Path.Combine(LocationPath, fwFileName),
-                    Path.Combine(LocationPath, "nanoCLR.bin"),
-                    true);
-            }
-            else
-            {
-
+                // unzip the firmware
+                if (Verbosity >= VerbosityLevel.Normal)
+                {
+                    OutputWriter.ForegroundColor = ConsoleColor.White;
+                    OutputWriter.Write($"Extracting {Path.GetFileName(fwFileName)}...");
+                }
                 ZipFile.ExtractToDirectory(
                     Path.Combine(LocationPath, fwFileName),
                     LocationPath);
-            }
-            if (Verbosity >= VerbosityLevel.Normal)
-            {
-                OutputWriter.ForegroundColor = ConsoleColor.Green;
-                OutputWriter.WriteLine("OK");
-                OutputWriter.ForegroundColor = ConsoleColor.White;
+                if (Verbosity >= VerbosityLevel.Normal)
+                {
+                    OutputWriter.ForegroundColor = ConsoleColor.Green;
+                    OutputWriter.WriteLine("OK");
+                    OutputWriter.ForegroundColor = ConsoleColor.White;
+                }
             }
 
             // be nice to the user and delete any fw packages older than a month
@@ -306,42 +298,62 @@ namespace nanoFramework.Tools.FirmwareFlasher
         internal async Task<(ExitCodes exitCode, string fwFileName)> DownloadPackageAsync(string locationPath, string archiveDirectoryPath, bool useExistingIfDownloadFails, bool cleanupUnpackedFiles)
         {
             LocationPath = locationPath;
+            string fwFileName = null!;
+            string extension = null!;
+            List<FileInfo> fwFiles = [];
 
-            var extension = _targetName == "WIN_DLL_nanoCLR" || _targetName == "WIN32_nanoCLR"
-                ? ".dll"
-                : ".zip";
+            void UpdateLocationPathAndFileName(bool initial)
+            {
+                bool withPreview = _preview;
 
-            string fwFileName = $"{_targetName}-{Version}{(_preview ? "-preview" : "")}{extension}";
+                if (_targetName == "WIN_DLL_nanoCLR")
+                {
+                    fwFileName = "nanoFramework.nanoCLR.dll";
+                    extension = ".dll";
+                    if (Version is not null)
+                    {
+                        LocationPath = Path.Combine(locationPath, $"{_targetName}-{Version}{(_preview ? "-preview" : "")}");
+                        initial = true;
+                        withPreview = false;
+                    }
+                }
+                else
+                {
+                    extension = ".zip";
+                    fwFileName = $"{_targetName}-{Version}{(_preview ? "-preview" : "")}{extension}";
+                }
+                if (initial)
+                {
+                    Directory.CreateDirectory(LocationPath);
 
-            string downloadUrl = string.Empty;
+                    if (withPreview)
+                    {
+                        fwFiles = [.. Directory.GetFiles(LocationPath)
+                                   .Select(f => new FileInfo(f))
+                                   .Where(f => f.Name.Contains("-preview.") && f.Extension == extension)
+                                   .OrderByDescending(f => f.Name)];
+                    }
+                    else
+                    {
+                        fwFiles = [.. Directory.GetFiles(LocationPath)
+                                   .Select(f => new FileInfo(f))
+                                   .Where(f => !f.Name.Contains("-preview.") && f.Extension == extension)
+                                   .OrderByDescending(f => f.Name)];
+                    }
+                }
+
+            }
 
             // create the download folder
             try
             {
-                Directory.CreateDirectory(LocationPath);
+                UpdateLocationPathAndFileName(true);
             }
             catch
             {
                 OutputWriter.WriteLine("");
 
                 return (ExitCodes.E9006, null);
-            }
-
-            List<FileInfo> fwFiles = [];
-
-            if (_preview)
-            {
-                fwFiles = [.. Directory.GetFiles(LocationPath)
-                                   .Select(f => new FileInfo(f))
-                                   .Where(f => f.Name.Contains("-preview.") && f.Extension == extension)
-                                   .OrderByDescending(f => f.Name)];
-            }
-            else
-            {
-                fwFiles = [.. Directory.GetFiles(LocationPath)
-                                   .Select(f => new FileInfo(f))
-                                   .Where(f => !f.Name.Contains("-preview.") && f.Extension == extension)
-                                   .OrderByDescending(f => f.Name)];
             }
 
             // flag to skip download if the fw package exists and it's recent
@@ -371,6 +383,8 @@ namespace nanoFramework.Tools.FirmwareFlasher
             // flag to signal if the work-flow step was successful
             bool stepSuccessful = skipDownload;
 
+            string downloadUrl = string.Empty;
+
             if (!skipDownload)
             {
                 // try to get download URL
@@ -389,7 +403,14 @@ namespace nanoFramework.Tools.FirmwareFlasher
 
                 // update with version from package about to be downloaded
                 Version = downloadResult.Version;
-                fwFileName = $"{_targetName}-{Version}{(_preview ? "-preview" : "")}{extension}";
+                try
+                {
+                    UpdateLocationPathAndFileName(false);
+                }
+                catch
+                {
+                    return (ExitCodes.E9006, null);
+                }
                 skipDownload = (from f in fwFiles
                                 where f.Name == fwFileName
                                 select f).Any();
@@ -420,80 +441,69 @@ namespace nanoFramework.Tools.FirmwareFlasher
                 stepSuccessful = false;
 
                 // check if we already have the file
-                if (!File.Exists(
-                    Path.Combine(
-                        LocationPath,
-                        fwFileName)))
+                if (Verbosity >= VerbosityLevel.Normal)
                 {
+                    OutputWriter.ForegroundColor = ConsoleColor.White;
+                    OutputWriter.Write($"Downloading firmware package...");
+                }
+
+                try
+                {
+                    // setup and perform download request
+                    using (HttpResponseMessage fwFileResponse = await s_cloudsmithClient.GetAsync(downloadUrl))
+                    {
+                        if (fwFileResponse.IsSuccessStatusCode)
+                        {
+                            using Stream readStream = await fwFileResponse.Content.ReadAsStreamAsync();
+                            using var fileStream = new FileStream(
+                                Path.Combine(LocationPath, fwFileName),
+                                FileMode.Create, FileAccess.Write);
+                            await readStream.CopyToAsync(fileStream);
+                        }
+                        else
+                        {
+                            return (ExitCodes.E9007, null);
+                        }
+                    }
+
                     if (Verbosity >= VerbosityLevel.Normal)
                     {
+                        OutputWriter.ForegroundColor = ConsoleColor.Green;
+                        OutputWriter.WriteLine("OK");
                         OutputWriter.ForegroundColor = ConsoleColor.White;
-                        OutputWriter.Write($"Downloading firmware package...");
                     }
 
-                    try
+                    stepSuccessful = true;
+
+                    // send telemetry data on successful download
+                    if (NanoTelemetryClient.TelemetryClient is not null)
                     {
-                        // setup and perform download request
-                        using (HttpResponseMessage fwFileResponse = await s_cloudsmithClient.GetAsync(downloadUrl))
+                        AssemblyInformationalVersionAttribute nanoffVersion = null;
+
+                        try
                         {
-                            if (fwFileResponse.IsSuccessStatusCode)
-                            {
-                                using Stream readStream = await fwFileResponse.Content.ReadAsStreamAsync();
-                                using var fileStream = new FileStream(
-                                    Path.Combine(LocationPath, fwFileName),
-                                    FileMode.Create, FileAccess.Write);
-                                await readStream.CopyToAsync(fileStream);
-                            }
-                            else
-                            {
-                                return (ExitCodes.E9007, null);
-                            }
+                            nanoffVersion = Attribute.GetCustomAttribute(
+                                     Assembly.GetEntryAssembly()!,
+                                     typeof(AssemblyInformationalVersionAttribute))
+                                 as AssemblyInformationalVersionAttribute;
+                        }
+                        catch
+                        {
+                            // OK to fail here, just telemetry
                         }
 
-                        if (Verbosity >= VerbosityLevel.Normal)
-                        {
-                            OutputWriter.ForegroundColor = ConsoleColor.Green;
-                            OutputWriter.WriteLine("OK");
-                            OutputWriter.ForegroundColor = ConsoleColor.White;
-                        }
+                        var packageTelemetry = new EventTelemetry("PackageDownloaded");
+                        packageTelemetry.Properties.Add("TargetName", _targetName);
+                        packageTelemetry.Properties.Add("Version", Version);
+                        packageTelemetry.Properties.Add("nanoffVersion", nanoffVersion == null ? "unknown" : nanoffVersion.InformationalVersion);
 
-                        stepSuccessful = true;
-
-                        // send telemetry data on successful download
-                        if (NanoTelemetryClient.TelemetryClient is not null)
-                        {
-                            AssemblyInformationalVersionAttribute nanoffVersion = null;
-
-                            try
-                            {
-                                nanoffVersion = Attribute.GetCustomAttribute(
-                                         Assembly.GetEntryAssembly()!,
-                                         typeof(AssemblyInformationalVersionAttribute))
-                                     as AssemblyInformationalVersionAttribute;
-                            }
-                            catch
-                            {
-                                // OK to fail here, just telemetry
-                            }
-
-                            var packageTelemetry = new EventTelemetry("PackageDownloaded");
-                            packageTelemetry.Properties.Add("TargetName", _targetName);
-                            packageTelemetry.Properties.Add("Version", Version);
-                            packageTelemetry.Properties.Add("nanoffVersion", nanoffVersion == null ? "unknown" : nanoffVersion.InformationalVersion);
-
-                            NanoTelemetryClient.TelemetryClient.TrackEvent(packageTelemetry);
-                            NanoTelemetryClient.TelemetryClient.Flush();
-                        }
-                    }
-                    catch
-                    {
-                        // exception with download, assuming it's something with network connection or Cloudsmith API
+                        NanoTelemetryClient.TelemetryClient.TrackEvent(packageTelemetry);
+                        NanoTelemetryClient.TelemetryClient.Flush();
                     }
                 }
-                else
+                catch
                 {
-                    // file already exists
-                    stepSuccessful = true;
+                    // exception with download, assuming it's something with network connection or Cloudsmith API
                 }
             }
 
