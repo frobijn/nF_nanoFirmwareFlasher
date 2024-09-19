@@ -249,11 +249,20 @@ namespace nanoFramework.Tools.FirmwareFlasher
                 OutputWriter.ForegroundColor = ConsoleColor.White;
                 OutputWriter.Write($"Extracting {Path.GetFileName(fwFileName)}...");
             }
+            if (fwFileName.EndsWith(".dll"))
+            {
+                File.Copy(
+                    Path.Combine(LocationPath, fwFileName),
+                    Path.Combine(LocationPath, "nanoCLR.bin"),
+                    true);
+            }
+            else
+            {
 
-            ZipFile.ExtractToDirectory(
-                Path.Combine(LocationPath, fwFileName),
-                LocationPath);
-
+                ZipFile.ExtractToDirectory(
+                    Path.Combine(LocationPath, fwFileName),
+                    LocationPath);
+            }
             if (Verbosity >= VerbosityLevel.Normal)
             {
                 OutputWriter.ForegroundColor = ConsoleColor.Green;
@@ -264,7 +273,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
             // be nice to the user and delete any fw packages older than a month
             Directory.GetFiles(LocationPath)
                      .Select(f => new FileInfo(f))
-                     .Where(f => f.Extension == ".zip" && f.LastWriteTime < DateTime.Now.AddMonths(-1))
+                     .Where(f => f.Name != fwFileName && f.Extension == Path.GetExtension(fwFileName) && f.LastWriteTime < DateTime.Now.AddMonths(-1))
                      .ToList()
                      .ForEach(f => f.Delete());
 
@@ -298,7 +307,11 @@ namespace nanoFramework.Tools.FirmwareFlasher
         {
             LocationPath = locationPath;
 
-            string fwFileName = $"{_targetName}-{Version}{(_preview ? "-preview" : "")}.zip";
+            var extension = _targetName == "WIN_DLL_nanoCLR" || _targetName == "WIN32_nanoCLR"
+                ? ".dll"
+                : ".zip";
+
+            string fwFileName = $"{_targetName}-{Version}{(_preview ? "-preview" : "")}{extension}";
 
             string downloadUrl = string.Empty;
 
@@ -320,14 +333,14 @@ namespace nanoFramework.Tools.FirmwareFlasher
             {
                 fwFiles = [.. Directory.GetFiles(LocationPath)
                                    .Select(f => new FileInfo(f))
-                                   .Where(f => f.Name.Contains("-preview.") && f.Extension == ".zip")
+                                   .Where(f => f.Name.Contains("-preview.") && f.Extension == extension)
                                    .OrderByDescending(f => f.Name)];
             }
             else
             {
                 fwFiles = [.. Directory.GetFiles(LocationPath)
                                    .Select(f => new FileInfo(f))
-                                   .Where(f => !f.Name.Contains("-preview.") && f.Extension == ".zip")
+                                   .Where(f => !f.Name.Contains("-preview.") && f.Extension == extension)
                                    .OrderByDescending(f => f.Name)];
             }
 
@@ -376,6 +389,10 @@ namespace nanoFramework.Tools.FirmwareFlasher
 
                 // update with version from package about to be downloaded
                 Version = downloadResult.Version;
+                fwFileName = $"{_targetName}-{Version}{(_preview ? "-preview" : "")}{extension}";
+                skipDownload = (from f in fwFiles
+                                where f.Name == fwFileName
+                                select f).Any();
 
                 stepSuccessful = !string.IsNullOrEmpty(downloadUrl);
             }
@@ -493,17 +510,11 @@ namespace nanoFramework.Tools.FirmwareFlasher
                     }
                     else
                     {
-                        string targetFileName = $"{_targetName}-{Version}.zip";
-                        fwFileName = fwFiles.Where(w => w.Name == targetFileName).Select(s => s.FullName).FirstOrDefault();
-                    }
-
-                    if (string.IsNullOrEmpty(fwFileName))
-                    {
                         return (ExitCodes.E9007, null);
                     }
 
                     // get the version form the file name
-                    string pattern = @"(\d+\.\d+\.\d+)(\.\d+|-.+)(?=\.zip)";
+                    string pattern = $@"(\d+\.\d+\.\d+)(\.\d+|-.+)(?=\{extension})";
                     MatchCollection match = Regex.Matches(fwFileName, pattern, RegexOptions.IgnoreCase);
 
                     // set property

@@ -163,6 +163,34 @@ namespace nanoFirmwareFlasher.Tests
             #endregion
         }
 
+
+        [TestMethod]
+        [TestCategory("CloudSmith")]
+        public void FirmwarePackage_VirtualDevice_Download()
+        {
+            #region Setup
+            using var output = new OutputWriterHelper();
+            string testDirectory = TestDirectoryHelper.GetTestDirectory(TestContext);
+            string cacheDirectory = Path.Combine(testDirectory, TestDirectoryHelper.LocationPathBase_RelativePath);
+            string targetName = "WIN_DLL_nanoCLR";
+            #endregion
+
+            #region Download Virtual Device firmware
+            var actual = new Esp32Firmware(targetName, null, false, null);
+            ExitCodes exitCode = actual.DownloadAndExtractAsync(null).GetAwaiter().GetResult();
+
+            Assert.AreEqual(ExitCodes.OK, exitCode);
+            Assert.IsTrue(Directory.Exists(Path.Combine(cacheDirectory, targetName)));
+            string[] files = (from f in Directory.GetFiles(Path.Combine(cacheDirectory, targetName))
+                              select Path.GetFileName(f)).ToArray();
+            Assert.AreEqual(1, (from f in files
+                                where f.StartsWith(targetName + "-") && Path.GetExtension(f) == ".dll"
+                                select f).Count());
+            Assert.IsTrue(File.Exists(Path.Combine(cacheDirectory, targetName, "nanoCLR.bin")));
+            Assert.AreEqual(2, files.Length);
+            #endregion
+        }
+
         [TestMethod]
         [TestCategory("Firmware archive")]
         public void FirmwarePackage_FromArchive()
@@ -180,8 +208,8 @@ namespace nanoFirmwareFlasher.Tests
             {
                 Assert.Inconclusive("Cannot download the ESP32 package.");
             }
-            var testTargetName = "NO_REAL_TARGET";
-            var testVersion = "0.0.0.0";
+            string testTargetName = "NO_REAL_TARGET";
+            string testVersion = "0.0.0.0";
             File.Copy(Path.Combine(cacheDirectory, package.Name, $"{package.Name}-{package.Version}.zip"), Path.Combine(archiveDirectory, $"{testTargetName}-{testVersion}.zip"));
             #endregion
 
