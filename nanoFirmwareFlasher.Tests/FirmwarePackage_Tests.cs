@@ -191,6 +191,34 @@ namespace nanoFirmwareFlasher.Tests
             #endregion
         }
 
+
+        [TestMethod]
+        [TestCategory("CloudSmith")]
+        public void FirmwarePackage_DebugFirmware_Download()
+        {
+            #region Setup
+            using var output = new OutputWriterHelper();
+            string testDirectory = TestDirectoryHelper.GetTestDirectory(TestContext);
+            string cacheDirectory = Path.Combine(testDirectory, TestDirectoryHelper.LocationPathBase_RelativePath);
+            string targetName = "WIN32_nanoCLR";
+            #endregion
+
+            #region Download Virtual Device firmware
+            var actual = new Esp32Firmware(targetName, null, false, null);
+            ExitCodes exitCode = actual.DownloadAndExtractAsync(null).GetAwaiter().GetResult();
+
+            Assert.AreEqual(ExitCodes.OK, exitCode);
+            Assert.IsTrue(Directory.Exists(Path.Combine(cacheDirectory, targetName)));
+            string[] directories = (from d in Directory.GetDirectories(Path.Combine(cacheDirectory, targetName))
+                                    select Path.GetFileName(d)).ToArray();
+            Assert.AreEqual(1, (from d in directories
+                                where d.StartsWith(targetName + "-")
+                                select d).Count());
+            Assert.IsTrue(File.Exists(Path.Combine(cacheDirectory, targetName, directories[0], "nanoFramework.nanoCLR.dll")));
+            Assert.AreEqual(1, directories.Length);
+            #endregion
+        }
+
         [TestMethod]
         [TestCategory("Firmware archive")]
         public void FirmwarePackage_FromArchive()
