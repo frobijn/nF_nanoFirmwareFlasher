@@ -306,7 +306,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
             {
                 bool withPreview = _preview;
 
-                if (_targetName == "WIN_DLL_nanoCLR")
+                if (_targetName == "WIN_DLL_nanoCLR" || _targetName == "WIN32_nanoCLR")
                 {
                     fwFileName = "nanoFramework.nanoCLR.dll";
                     extension = ".dll";
