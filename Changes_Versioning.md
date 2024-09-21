@@ -75,7 +75,7 @@ The changes in this repository implement the firmware archive feature:
 
 - Extra command line options added to *nanoFirmwareFlasher.Tool* and the implementation to *nanoFirmwareFlasher.Library* to download cloudsmith packages to a firmware archive, list the content of the archive, and deploy firmware from the archive to a device.
 
-- Apart from firmware .zip packages, the .dll for the *WIN_DLL_nanoCLR* target can be downloaded and is placed in the archive in such a way if can be used as runtime for *nanoclr.exe*.
+- Apart from firmware .zip packages, the .dll for the *WIN_DLL_nanoCLR* target can be downloaded and is placed in the archive in such a way if can be used as runtime for *nanoclr.exe*. Same for *WIN32_nanoCLR*, but that is probably not needed as firmware development is probably done in a fork of the nf-interpreter repository and based on the correct version of the CLR.
 
 - Added a description of the new command line options to the README.md file
 
@@ -94,11 +94,11 @@ The changes in this repository implement the firmware archive feature:
 
 The changes in this repository have been made to get a list of names and versions of the native assemblies that are used in a runtime, without having to connect to a device via a serial port and retrieve the list via the wire protocol.
 
-- NanoCLR.exe: an option has been added: --nativeassemblies, similar to (and can be combined with) --getversion. The result is a list of names, version and checksums sent to the standard output.
+- NanoCLR.exe: an option has been added: --getnativeassemblies, similar to (and can be combined with) --getversion. The result is a list of names, version and checksums sent to the standard output.
 
     It calls a method in the CLR host assembly to get information about the native assemblies (a .NET class). The data for that class is deserialized from data obtained via two additional methods in the native NanoCLR runtime that serializes the static constants in the runtime with native assembly information. If a tool requires the list of native assemblies, it can run the nanoclr.exe and parse its output.
 
-- NanoCLR.exe: added --clrinstancepath to use with --nativeassemblies, so that the above keeps working if nanoclr.exe is updated but an older runtime is used.
+- NanoCLR.exe: added --clrinstancepath to use with --getnativeassemblies, so that the above keeps working if nanoclr.exe is updated but an older runtime is used. If the instance does not support the two additional methods in the native NanoCLR runtime, no details about the native assemblies is displayed, but instead a message (if verbosity is high enough).
 
 - CMake/Modules/FindNF_NativeAssemblies.cmake: create a `native_assemblies.csv` file in the build output directory of a firmware package that contains the names, version and checksums of the native assemblies selected to be part of the firmware.
 
