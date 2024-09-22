@@ -135,7 +135,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
                 {
                     Verbosity = verbosity
                 };
-                (ExitCodes exitCode, string fwFileName) = await package.DownloadPackageAsync(_archivePath, null, false, false);
+                (ExitCodes exitCode, string fwFilePath) = await package.DownloadPackageAsync(_archivePath, null, false, false);
                 if (exitCode != ExitCodes.OK)
                 {
                     result = exitCode;
@@ -161,7 +161,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
                     Version = remoteTarget.Version,
                 };
                 File.WriteAllText(
-                    Path.Combine(_archivePath, $"{fwFileName}{INFOFILE_EXTENSION}"),
+                    $"{(fwFilePath.EndsWith(".zip") ? fwFilePath : Path.GetDirectoryName(fwFilePath))}{INFOFILE_EXTENSION}",
                     JsonConvert.SerializeObject(packageInformation)
                 );
             }

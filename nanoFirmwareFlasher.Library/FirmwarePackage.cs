@@ -237,22 +237,22 @@ namespace nanoFramework.Tools.FirmwareFlasher
             }
 
             // download the firmware package
-            (ExitCodes exitCode, string fwFileName) = await DownloadPackageAsync(LocationPath, archiveDirectoryPath, true, true);
+            (ExitCodes exitCode, string fwFilePath) = await DownloadPackageAsync(LocationPath, archiveDirectoryPath, true, true);
             if (exitCode != ExitCodes.OK)
             {
                 return exitCode;
             }
 
-            if (fwFileName.EndsWith(".zip"))
+            if (fwFilePath.EndsWith(".zip"))
             {
                 // unzip the firmware
                 if (Verbosity >= VerbosityLevel.Normal)
                 {
                     OutputWriter.ForegroundColor = ConsoleColor.White;
-                    OutputWriter.Write($"Extracting {Path.GetFileName(fwFileName)}...");
+                    OutputWriter.Write($"Extracting {Path.GetFileName(fwFilePath)}...");
                 }
                 ZipFile.ExtractToDirectory(
-                    Path.Combine(LocationPath, fwFileName),
+                    fwFilePath,
                     LocationPath);
                 if (Verbosity >= VerbosityLevel.Normal)
                 {
@@ -265,7 +265,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
             // be nice to the user and delete any fw packages older than a month
             Directory.GetFiles(LocationPath)
                      .Select(f => new FileInfo(f))
-                     .Where(f => f.Name != fwFileName && f.Extension == Path.GetExtension(fwFileName) && f.LastWriteTime < DateTime.Now.AddMonths(-1))
+                     .Where(f => f.Name != Path.GetFileName(fwFilePath) && f.Extension == Path.GetExtension(fwFilePath) && f.LastWriteTime < DateTime.Now.AddMonths(-1))
                      .ToList()
                      .ForEach(f => f.Delete());
 
@@ -294,8 +294,8 @@ namespace nanoFramework.Tools.FirmwareFlasher
         /// <param name="useExistingIfDownloadFails">If the download fails and there is a matching zip file present, use that zip instead.
         /// The match is done by version only, so pass <c>true</c> only if the <paramref name="locationPath"/> is specific for the target.</param>
         /// <param name="cleanupUnpackedFiles">Removes existing files in <paramref name="locationPath"/> with the same extensions as files that can be present in the zip file.</param>
-        /// <returns>The result of the operation, and the file name of the downloaded file in case of success.</returns>
-        internal async Task<(ExitCodes exitCode, string fwFileName)> DownloadPackageAsync(string locationPath, string archiveDirectoryPath, bool useExistingIfDownloadFails, bool cleanupUnpackedFiles)
+        /// <returns>The result of the operation, and the full path to the downloaded file in case of success.</returns>
+        internal async Task<(ExitCodes exitCode, string fwFilePath)> DownloadPackageAsync(string locationPath, string archiveDirectoryPath, bool useExistingIfDownloadFails, bool cleanupUnpackedFiles)
         {
             LocationPath = locationPath;
             string fwFileName = null!;
@@ -560,7 +560,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
             }
 
             // got here, must have a file!
-            return (ExitCodes.OK, fwFileName);
+            return (ExitCodes.OK, Path.Combine(LocationPath, fwFileName));
         }
 
         private static async Task<DownloadUrlResult> GetDownloadUrlAsync(
