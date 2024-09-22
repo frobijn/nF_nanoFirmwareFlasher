@@ -37,7 +37,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                     ".nanoFramework",
                     "fw_cache");
-        private static readonly ThreadLocal<string> s_locationPathBase = new();
+        private static readonly AsyncLocal<string> s_locationPathBase = new();
 
         /// <summary>
         /// Path with the base location for firmware packages.
