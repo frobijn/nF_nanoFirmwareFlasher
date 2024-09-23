@@ -114,6 +114,8 @@ The changes in this repository have been made to get a list of names and version
 
 ## nf-Visual-Studio-extension
 
+**Work in progress**
+
 A new library / NuGet package is introduced: `nanoFramework.Targeting.Tooling`, with unit tests in `nanoFramework.Targeting.Tooling.Tests`. This is designed to contain all logic for the various nanoFramework tools. It targets .NET 6 and .NET Framework 4.7.2 (same as nf_debugger library). It contains an implementation of the features:
 
 - Read hierarchy of `nano.devices.json` configuration.
