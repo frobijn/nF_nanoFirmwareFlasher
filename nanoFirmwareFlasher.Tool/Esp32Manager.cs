@@ -133,7 +133,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
             bool updateAndDeploy = false;
 
             // update operation requested?
-            if (_options.Update)
+            if (_options.Update || _options.ShowFirmwareOnly)
             {
                 // write flash
                 var exitCode = await Esp32Operations.UpdateFirmwareAsync(
@@ -143,6 +143,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
                     true,
                     _options.FwVersion,
                     _options.Preview,
+                    _options.ShowFirmwareOnly,
                     _options.FromFwArchive ? _options.FwArchivePath : null,
                     _options.DeploymentImage,
                     null,
@@ -152,7 +153,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
                     _verbosityLevel,
                     _options.Esp32PartitionTableSize);
 
-                if (exitCode != ExitCodes.OK)
+                if (exitCode != ExitCodes.OK || _options.ShowFirmwareOnly)
                 {
                     // done here
                     return exitCode;

@@ -440,54 +440,55 @@ namespace nanoFramework.Tools.FirmwareFlasher
             #region target processing
 
             // if a target name was specified, try to be smart and set the platform accordingly (in case it wasn't specified)
-            if (o.Platform == null
-                && !string.IsNullOrEmpty(o.TargetName))
+            if (!string.IsNullOrEmpty(o.TargetName))
             {
                 // check for invalid options passed with platform option
-                if (o.NanoDevice)
+                if (o.NanoDevice || o.ShowFirmwareOnly)
                 {
                     _exitCode = ExitCodes.E9000;
-                    _extraMessage = "Incompatible options combined with --platform.";
+                    _extraMessage = "Incompatible options combined with --targetname.";
                     return;
                 }
-
-                // easiest one: ESP32
-                if (o.TargetName.StartsWith("ESP")
-                    || o.TargetName.StartsWith("M5")
-                    || o.TargetName.StartsWith("FEATHER")
-                    || o.TargetName.StartsWith("ESPKALUGA"))
+                if (o.Platform == null)
                 {
-                    o.Platform = SupportedPlatform.esp32;
-                }
-                else if (
-                    o.TargetName.StartsWith("ST")
-                    || o.TargetName.StartsWith("MBN_QUAIL")
-                    || o.TargetName.StartsWith("NETDUINO3")
-                    || o.TargetName.StartsWith("GHI")
-                    || o.TargetName.StartsWith("IngenuityMicro")
-                    || o.TargetName.StartsWith("WeAct")
-                    || o.TargetName.StartsWith("ORGPAL")
-                    || o.TargetName.StartsWith("Pyb")
-                    || o.TargetName.StartsWith("NESHTEC_NESHNODE_V")
-                )
-                {
-                    // candidates for STM32
-                    o.Platform = SupportedPlatform.stm32;
-                }
-                else if (o.TargetName.StartsWith("TI"))
-                {
-                    // candidates for TI CC13x2
-                    o.Platform = SupportedPlatform.ti_simplelink;
-                }
-                else if (o.TargetName.StartsWith("SL"))
-                {
-                    // candidates for Silabs GG11
-                    o.Platform = SupportedPlatform.gg11;
-                }
-                else
-                {
-                    // other supported platforms will go here
-                    // in case a wacky target is entered by the user, the package name will be checked against Cloudsmith repo
+                    // easiest one: ESP32
+                    if (o.TargetName.StartsWith("ESP")
+                        || o.TargetName.StartsWith("M5")
+                        || o.TargetName.StartsWith("FEATHER")
+                        || o.TargetName.StartsWith("ESPKALUGA"))
+                    {
+                        o.Platform = SupportedPlatform.esp32;
+                    }
+                    else if (
+                        o.TargetName.StartsWith("ST")
+                        || o.TargetName.StartsWith("MBN_QUAIL")
+                        || o.TargetName.StartsWith("NETDUINO3")
+                        || o.TargetName.StartsWith("GHI")
+                        || o.TargetName.StartsWith("IngenuityMicro")
+                        || o.TargetName.StartsWith("WeAct")
+                        || o.TargetName.StartsWith("ORGPAL")
+                        || o.TargetName.StartsWith("Pyb")
+                        || o.TargetName.StartsWith("NESHTEC_NESHNODE_V")
+                    )
+                    {
+                        // candidates for STM32
+                        o.Platform = SupportedPlatform.stm32;
+                    }
+                    else if (o.TargetName.StartsWith("TI"))
+                    {
+                        // candidates for TI CC13x2
+                        o.Platform = SupportedPlatform.ti_simplelink;
+                    }
+                    else if (o.TargetName.StartsWith("SL"))
+                    {
+                        // candidates for Silabs GG11
+                        o.Platform = SupportedPlatform.gg11;
+                    }
+                    else
+                    {
+                        // other supported platforms will go here
+                        // in case a wacky target is entered by the user, the package name will be checked against Cloudsmith repo
+                    }
                 }
             }
 

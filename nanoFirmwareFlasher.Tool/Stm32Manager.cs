@@ -34,6 +34,15 @@ namespace nanoFramework.Tools.FirmwareFlasher
         /// <inheritdoc />
         public async Task<ExitCodes> ProcessAsync()
         {
+            if (_options.ShowFirmwareOnly)
+            {
+                OutputWriter.ForegroundColor = ConsoleColor.Red;
+                OutputWriter.WriteLine();
+                OutputWriter.WriteLine($"Cannot determine the best matching target for a {SupportedPlatform.stm32} device.");
+                OutputWriter.WriteLine();
+                OutputWriter.ForegroundColor = ConsoleColor.White;
+                return ExitCodes.OK;
+            }
             if (_options.InstallDfuDrivers)
             {
                 return Stm32Operations.InstallDfuDrivers(_verbosityLevel);

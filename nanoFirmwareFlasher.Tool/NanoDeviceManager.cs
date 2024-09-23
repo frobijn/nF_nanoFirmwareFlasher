@@ -52,6 +52,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
                 exitCode = await _nanoDeviceOperations.UpdateDeviceClrAsync(
                     _options.SerialPort,
                     _options.FwVersion,
+                    _options.ShowFirmwareOnly,
                     _options.FromFwArchive ? _options.FwArchivePath : null,
                     _options.ClrFile,
                     _verbosityLevel);

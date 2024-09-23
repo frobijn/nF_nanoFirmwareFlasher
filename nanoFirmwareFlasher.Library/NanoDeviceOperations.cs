@@ -168,6 +168,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
         /// </summary>
         /// <param name="serialPort">Serial port name where the device is connected to.</param>
         /// <param name="fwVersion">Firmware version to update to.</param>
+        /// <param name="showFwOnly">Only show which firmware to use; do not deploy anything to the device.</param>
         /// <param name="archiveDirectoryPath">Path to the archive directory where all targets are located. Pass <c>null</c> if there is no archive.
         /// If not <c>null</c>, the package will always be retrieved from the archive and never be downloaded.</param>
         /// <param name="clrFile">Path to CLR file to use for firmware update.</param>
@@ -187,6 +188,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
         public async Task<ExitCodes> UpdateDeviceClrAsync(
             string serialPort,
             string fwVersion,
+            bool showFwOnly,
             string archiveDirectoryPath,
             string clrFile,
             VerbosityLevel verbosity = VerbosityLevel.Quiet)
@@ -261,6 +263,14 @@ namespace nanoFramework.Tools.FirmwareFlasher
                 OutputWriter.WriteLine("");
 
                 OutputWriter.ForegroundColor = ConsoleColor.White;
+            }
+
+            if (showFwOnly)
+            {
+                OutputWriter.WriteLine("");
+                OutputWriter.WriteLine($"Connected nanoDevice uses target '{nanoDevice.TargetName}'; platform is {nanoDevice.Platform}.");
+                OutputWriter.WriteLine("");
+                return ExitCodes.OK;
             }
 
             // local file will be flashed straight away

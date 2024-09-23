@@ -97,6 +97,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
         /// <param name="updateFw">Set to <see langword="true"/> to force download of firmware package.</param>
         /// <param name="fwVersion">Firmware version to update to.</param>
         /// <param name="preview">Set to <see langword="true"/> to use preview version to update.</param>
+        /// <param name="showFwOnly">Only show which firmware to use; do not deploy anything to the device.</param>
         /// <param name="archiveDirectoryPath">Path to the archive directory where all targets are located. Pass <c>null</c> if there is no archive.
         /// If not <c>null</c>, the package will always be retrieved from the archive and never be downloaded.</param>
         /// <param name="applicationPath">Path to application to update along with the firmware update.</param>
@@ -114,6 +115,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
             bool updateFw,
             string fwVersion,
             bool preview,
+            bool showFwOnly,
             string archiveDirectoryPath,
             string applicationPath,
             string deploymentAddress,
@@ -365,13 +367,23 @@ namespace nanoFramework.Tools.FirmwareFlasher
                     targetName = $"ESP32_S3{revisionSuffix}";
                 }
 
-                OutputWriter.ForegroundColor = ConsoleColor.Blue;
+                if (showFwOnly)
+                {
+                    OutputWriter.WriteLine("");
+                    OutputWriter.WriteLine($"Target '{targetName}' best matches the device characteristics.");
+                    OutputWriter.WriteLine("");
+                    return ExitCodes.OK;
+                }
+                else
+                {
+                    OutputWriter.ForegroundColor = ConsoleColor.Blue;
 
-                OutputWriter.WriteLine("");
-                OutputWriter.WriteLine($"No target name was provided! Using '{targetName}' based on the device characteristics.");
-                OutputWriter.WriteLine("");
+                    OutputWriter.WriteLine("");
+                    OutputWriter.WriteLine($"No target name was provided! Using '{targetName}' based on the device characteristics.");
+                    OutputWriter.WriteLine("");
 
-                OutputWriter.ForegroundColor = ConsoleColor.White;
+                    OutputWriter.ForegroundColor = ConsoleColor.White;
+                }
             }
 
             Esp32Firmware firmware = new Esp32Firmware(

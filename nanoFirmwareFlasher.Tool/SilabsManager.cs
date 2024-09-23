@@ -34,6 +34,16 @@ namespace nanoFramework.Tools.FirmwareFlasher
         /// <inheritdoc />
         public async Task<ExitCodes> ProcessAsync()
         {
+            if (_options.ShowFirmwareOnly)
+            {
+                OutputWriter.ForegroundColor = ConsoleColor.Red;
+                OutputWriter.WriteLine();
+                OutputWriter.WriteLine($"Cannot determine the best matching target for a {SupportedPlatform.gg11} device.");
+                OutputWriter.WriteLine();
+                OutputWriter.ForegroundColor = ConsoleColor.White;
+                return ExitCodes.OK;
+            }
+
             if (_options.ListJLinkDevices)
             {
                 var connecteDevices = JLinkDevice.ListDevices();
