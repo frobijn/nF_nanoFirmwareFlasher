@@ -61,7 +61,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
                 {
                     PersistedPackageInformation packageInformation = JsonConvert.DeserializeObject<PersistedPackageInformation>(File.ReadAllText(filePath));
                     if (packageInformation.IsPreview == preview &&
-                        (platform is null || platform == packageInformation.Platform))
+                        (platform is null || platform.Value.ToString().Equals(packageInformation.Platform, StringComparison.OrdinalIgnoreCase)))
                     {
                         targetPackages.Add(packageInformation);
                     }
@@ -157,7 +157,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
                 {
                     IsPreview = preview,
                     Name = remoteTarget.Name,
-                    Platform = platform,
+                    Platform = platform.ToString(),
                     Version = remoteTarget.Version,
                 };
                 File.WriteAllText(
@@ -182,7 +182,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
             /// <summary>
             /// Platform code
             /// </summary>
-            public SupportedPlatform? Platform { get; set; }
+            public string Platform { get; set; }
 
             /// <summary>
             /// Indicates whether this is a preview
