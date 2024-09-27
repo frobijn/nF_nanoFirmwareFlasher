@@ -4,6 +4,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using nanoFramework.Tools.Debugger.NFDevice;
 
 namespace nanoFramework.Tools.FirmwareFlasher
 {
@@ -14,6 +15,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
     {
         private readonly Options _options;
         private readonly VerbosityLevel _verbosityLevel;
+        private const int AccessSerialPortTimeout = 3000;
 
         public Esp32Manager(Options options, VerbosityLevel verbosityLevel)
         {
@@ -40,6 +42,22 @@ namespace nanoFramework.Tools.FirmwareFlasher
                 return ExitCodes.E6001;
             }
 
+            ExitCodes result = ExitCodes.E6002;
+
+            if (!GlobalExclusiveDeviceAccess.CommunicateWithDevice(_options.SerialPort, () =>
+                {
+                    result = DoProcessAsync().GetAwaiter().GetResult();
+                },
+                AccessSerialPortTimeout))
+            {
+                result = ExitCodes.E6002;
+            }
+
+            return result;
+        }
+
+        private async Task<ExitCodes> DoProcessAsync()
+        {
             EspTool espTool;
 
             try
