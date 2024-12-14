@@ -243,13 +243,13 @@ namespace nanoFirmwareFlasher.Tests
 
             // Copy the package to the archive directory, modified for TARGET1_IN_ARCHIVE_ONLY and TARGET2_IN_ARCHIVE_ONLY
             File.Copy(Path.Combine(cacheDirectory, package.Name, $"{package.Name}-{package.Version}.zip"), Path.Combine(archiveDirectory, $"{testTarget1Name}-{testVersion}.zip"));
-            File.WriteAllText(Path.Combine(archiveDirectory, $"{testTarget1Name}-{testVersion}.json"), $@"{{ ""Name"": ""{testTarget1Name}"", ""Version"": ""{testVersion}"", ""Platform"": ""esp32"" }}");
+            File.WriteAllText(Path.Combine(archiveDirectory, $"{testTarget1Name}-{testVersion}.zip.json"), $@"{{ ""Name"": ""{testTarget1Name}"", ""Version"": ""{testVersion}"", ""Platform"": ""esp32"" }}");
             File.Copy(Path.Combine(cacheDirectory, package.Name, $"{package.Name}-{package.Version}.zip"), Path.Combine(archiveDirectory, $"{testTarget2Name}-{testVersion}.zip"));
-            File.WriteAllText(Path.Combine(archiveDirectory, $"{testTarget2Name}-{testVersion}.json"), $@"{{ ""Name"": ""{testTarget2Name}"", ""Version"": ""{testVersion}"", ""Platform"": ""esp32"" }}");
+            File.WriteAllText(Path.Combine(archiveDirectory, $"{testTarget2Name}-{testVersion}.zip.json"), $@"{{ ""Name"": ""{testTarget2Name}"", ""Version"": ""{testVersion}"", ""Platform"": ""esp32"" }}");
 
             // Create an invalid package for an earlier version of TARGET2_IN_ARCHIVE_ONLY - this should not be used
             File.WriteAllText(Path.Combine(archiveDirectory, $"{testTarget2Name}-{testOldVersion}.zip"), "");
-            File.WriteAllText(Path.Combine(archiveDirectory, $"{testTarget2Name}-{testOldVersion}.json"), $@"{{ ""Name"": ""{testTarget2Name}"", ""Version"": ""{testOldVersion}"", ""Platform"": ""esp32"" }}");
+            File.WriteAllText(Path.Combine(archiveDirectory, $"{testTarget2Name}-{testOldVersion}.zip.json"), $@"{{ ""Name"": ""{testTarget2Name}"", ""Version"": ""{testOldVersion}"", ""Platform"": ""esp32"" }}");
             #endregion
 
             #region Get package that exist in the archive directory but not in the repository; include version
