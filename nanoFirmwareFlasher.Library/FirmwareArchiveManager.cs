@@ -230,7 +230,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
 
             foreach (string filePath in packagesToDelete.Keys)
             {
-                string packageFilePath = Path.ChangeExtension(filePath, ".zip");
+                string packageFilePath = Path.ChangeExtension(filePath, null);
                 if (File.Exists(packageFilePath))
                 {
                     try
@@ -245,22 +245,18 @@ namespace nanoFramework.Tools.FirmwareFlasher
                         continue;
                     }
                 }
-                else
+                else if (Directory.Exists(packageFilePath))
                 {
-                    packageFilePath = Path.ChangeExtension(filePath, null);
-                    if (Directory.Exists(packageFilePath))
+                    try
                     {
-                        try
-                        {
-                            Directory.Delete(packageFilePath, true);
-                        }
-                        catch (Exception ex)
-                        {
-                            OutputWriter.ForegroundColor = ConsoleColor.Yellow;
-                            OutputWriter.WriteLine($"Could not delete firmware package '{Path.GetFileName(packageFilePath)}': {ex.Message}");
-                            OutputWriter.ForegroundColor = ConsoleColor.White;
-                            continue;
-                        }
+                        Directory.Delete(packageFilePath, true);
+                    }
+                    catch (Exception ex)
+                    {
+                        OutputWriter.ForegroundColor = ConsoleColor.Yellow;
+                        OutputWriter.WriteLine($"Could not delete firmware package '{Path.GetFileName(packageFilePath)}': {ex.Message}");
+                        OutputWriter.ForegroundColor = ConsoleColor.White;
+                        continue;
                     }
                 }
 
