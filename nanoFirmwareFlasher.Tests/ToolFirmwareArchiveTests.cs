@@ -124,6 +124,13 @@ namespace nanoFirmwareFlasher.Tests
             Assert.IsTrue(output.Output.Contains("--archivepath is required when --updatearchive is specified."));
 
             output.Reset();
+            actual = Program.Main(["--updatearchive", "--archivepath", archiveDirectory, "--platform", $"{SupportedPlatform.ti_simplelink}", "--keepallversions"])
+                .GetAwaiter().GetResult();
+
+            Assert.AreEqual((int)ExitCodes.E9000, actual);
+            Assert.IsTrue(output.Output.Contains("--keepallversions can only be used with --target and not when --platform is specified."));
+
+            output.Reset();
             actual = Program.Main(["--updatearchive", "--archivepath", $"{SupportedPlatform.ti_simplelink}", "--verbosity", "diagnostic"])
                 .GetAwaiter().GetResult();
 

@@ -572,12 +572,20 @@ namespace nanoFramework.Tools.FirmwareFlasher
                     return;
                 }
 
+                if (o.KeepAllFwVersions && string.IsNullOrEmpty(o.TargetName))
+                {
+                    _exitCode = ExitCodes.E9000;
+                    _extraMessage = $"--keepallversions can only be used with --target and not when --platform is specified.";
+                    return;
+                }
+
                 // The packages can be downloaded without device connection
                 _exitCode = await new FirmwareArchiveManager(o.FwArchivePath).DownloadFirmwareFromRepository(
                     o.Preview,
                     o.Platform,
                     o.TargetName,
                     o.FwVersion,
+                    o.KeepAllFwVersions,
                     _verbosityLevel);
                 return;
             }

@@ -50,7 +50,7 @@ namespace nanoFirmwareFlasher.Tests
             var actual = new FirmwareArchiveManager(archiveDirectory);
 
             // Note that the platform is determined by the logic in the nanoff tool if a target is specified.
-            ExitCodes exitCode = actual.DownloadFirmwareFromRepository(false, SupportedPlatform.esp32, package.Name, package.Version, VerbosityLevel.Detailed)
+            ExitCodes exitCode = actual.DownloadFirmwareFromRepository(false, SupportedPlatform.esp32, package.Name, package.Version, false, VerbosityLevel.Detailed)
                 .GetAwaiter().GetResult();
 
             Assert.AreEqual(ExitCodes.OK, exitCode);
@@ -106,7 +106,7 @@ namespace nanoFirmwareFlasher.Tests
             #region Download the package
             var actual = new FirmwareArchiveManager(archiveDirectory);
 
-            ExitCodes exitCode = actual.DownloadFirmwareFromRepository(false, null, targetName, null, VerbosityLevel.Detailed)
+            ExitCodes exitCode = actual.DownloadFirmwareFromRepository(false, null, targetName, null, false, VerbosityLevel.Detailed)
                 .GetAwaiter().GetResult();
 
             Assert.AreEqual(ExitCodes.OK, exitCode);
@@ -139,7 +139,7 @@ namespace nanoFirmwareFlasher.Tests
             #region Download the latest package for the target
             var actual = new FirmwareArchiveManager(archiveDirectory);
 
-            ExitCodes exitCode = actual.DownloadFirmwareFromRepository(false, SupportedPlatform.esp32, package.Name, null, VerbosityLevel.Quiet)
+            ExitCodes exitCode = actual.DownloadFirmwareFromRepository(false, SupportedPlatform.esp32, package.Name, null, false, VerbosityLevel.Quiet)
                 .GetAwaiter().GetResult();
 
             Assert.AreEqual(ExitCodes.OK, exitCode);
@@ -196,7 +196,7 @@ namespace nanoFirmwareFlasher.Tests
             #region Download all packages
             var actual = new FirmwareArchiveManager(archiveDirectory);
 
-            ExitCodes exitCode = actual.DownloadFirmwareFromRepository(false, SupportedPlatform.ti_simplelink, null, null, VerbosityLevel.Quiet)
+            ExitCodes exitCode = actual.DownloadFirmwareFromRepository(false, SupportedPlatform.ti_simplelink, null, null, false, VerbosityLevel.Quiet)
                 .GetAwaiter().GetResult();
 
             Assert.AreEqual(ExitCodes.OK, exitCode);

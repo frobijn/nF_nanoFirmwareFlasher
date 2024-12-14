@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
@@ -78,6 +79,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
             string target)
         {
             CloudSmithPackageDetail result = null;
+
             Version latest = null;
             if (Directory.Exists(_archivePath) && !string.IsNullOrEmpty(target))
             {
@@ -108,6 +110,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
         /// <param name="platform">Platform code to use on search. This should not be <c>null</c> otherwise the firmware may not be found by nanoff.</param>
         /// <param name="targetName">Name of the target the firmware is created for. Must be assigned.</param>
         /// <param name="version">Version of the firmware to download; can be <c>null</c>.</param>
+        /// <param name="keepAllVersions">Do not remove old firmware versions or targets that are no longer available for the specified <paramref name="platform"/>.</param>
         /// <param name="verbosity">VerbosityLevel to use when outputting progress and error messages.</param>
         /// <returns>The result of the task</returns>
         public async Task<ExitCodes> DownloadFirmwareFromRepository(
@@ -115,6 +118,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
             SupportedPlatform? platform,
             string targetName,
             string version,
+            bool keepAllVersions,
             VerbosityLevel verbosity)
         {
             // Find the requested firmware in the repository
@@ -158,6 +162,24 @@ namespace nanoFramework.Tools.FirmwareFlasher
 
             ExitCodes result = ExitCodes.OK;
 
+            Dictionary<string, CloudSmithPackageDetail> packagesToDelete = [];
+            if (!keepAllVersions)
+            {
+                if (Directory.Exists(_archivePath))
+                {
+                    foreach (string filePath in Directory.EnumerateFiles(_archivePath, platform.HasValue ? $"*{INFOFILE_EXTENSION}" : $"{targetName}-*{INFOFILE_EXTENSION}"))
+                    {
+                        PersistedPackageInformation packageInformation = JsonConvert.DeserializeObject<PersistedPackageInformation>(File.ReadAllText(filePath));
+                        if (packageInformation.IsPreview == preview &&
+                            (platform is null || platform.Value.ToString().Equals(packageInformation.Platform, StringComparison.OrdinalIgnoreCase))
+                        )
+                        {
+                            packagesToDelete[filePath] = packageInformation;
+                        }
+                    }
+                }
+            }
+
             foreach ((CloudSmithPackageDetail remoteTarget, Version _) in remoteTargets.Values)
             {
                 // Download the firmware
@@ -175,6 +197,14 @@ namespace nanoFramework.Tools.FirmwareFlasher
                         OutputWriter.WriteLine($"Could not download target {remoteTarget.Name} {remoteTarget.Version}");
                         OutputWriter.ForegroundColor = ConsoleColor.White;
                     }
+
+                    // Do not remove old versions for this target
+                    foreach (string filePath in (from p in packagesToDelete
+                                                 where p.Value.Name == remoteTarget.Name
+                                                 select p.Key).ToList())
+                    {
+                        packagesToDelete.Remove(filePath);
+                    }
                     continue;
                 }
                 else if (verbosity > VerbosityLevel.Normal)
@@ -190,11 +220,62 @@ namespace nanoFramework.Tools.FirmwareFlasher
                     Platform = platform.ToString(),
                     Version = remoteTarget.Version,
                 };
+                string infoFilePath = $"{(fwFilePath.EndsWith(".zip") ? fwFilePath : Path.GetDirectoryName(fwFilePath))}{INFOFILE_EXTENSION}";
                 File.WriteAllText(
-                    $"{(fwFilePath.EndsWith(".zip") ? fwFilePath : Path.GetDirectoryName(fwFilePath))}{INFOFILE_EXTENSION}",
+                    infoFilePath,
                     JsonConvert.SerializeObject(packageInformation)
                 );
+                packagesToDelete.Remove(infoFilePath);
             }
+
+            foreach (string filePath in packagesToDelete.Keys)
+            {
+                string packageFilePath = Path.ChangeExtension(filePath, ".zip");
+                if (File.Exists(packageFilePath))
+                {
+                    try
+                    {
+                        File.Delete(packageFilePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        OutputWriter.ForegroundColor = ConsoleColor.Yellow;
+                        OutputWriter.WriteLine($"Could not delete firmware package '{Path.GetFileName(packageFilePath)}': {ex.Message}");
+                        OutputWriter.ForegroundColor = ConsoleColor.White;
+                        continue;
+                    }
+                }
+                else
+                {
+                    packageFilePath = Path.ChangeExtension(filePath, null);
+                    if (Directory.Exists(packageFilePath))
+                    {
+                        try
+                        {
+                            Directory.Delete(packageFilePath, true);
+                        }
+                        catch (Exception ex)
+                        {
+                            OutputWriter.ForegroundColor = ConsoleColor.Yellow;
+                            OutputWriter.WriteLine($"Could not delete firmware package '{Path.GetFileName(packageFilePath)}': {ex.Message}");
+                            OutputWriter.ForegroundColor = ConsoleColor.White;
+                            continue;
+                        }
+                    }
+                }
+
+                try
+                {
+                    File.Delete(filePath);
+                }
+                catch (Exception ex)
+                {
+                    OutputWriter.ForegroundColor = ConsoleColor.Yellow;
+                    OutputWriter.WriteLine($"Could not delete info file '{Path.GetFileName(filePath)}': {ex.Message}");
+                    OutputWriter.ForegroundColor = ConsoleColor.White;
+                }
+            }
+
             return result;
         }
         #endregion
