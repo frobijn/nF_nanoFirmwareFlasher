@@ -167,7 +167,7 @@ namespace nanoFramework.Tools.FirmwareFlasher
             {
                 if (Directory.Exists(_archivePath))
                 {
-                    foreach (string filePath in Directory.EnumerateFiles(_archivePath, platform.HasValue ? $"*{INFOFILE_EXTENSION}" : $"{targetName}-*{INFOFILE_EXTENSION}"))
+                    foreach (string filePath in Directory.EnumerateFiles(_archivePath, string.IsNullOrEmpty(targetName) ? $"*{INFOFILE_EXTENSION}" : $"{targetName}-*{INFOFILE_EXTENSION}"))
                     {
                         PersistedPackageInformation packageInformation = JsonConvert.DeserializeObject<PersistedPackageInformation>(File.ReadAllText(filePath));
                         if (packageInformation.IsPreview == preview &&

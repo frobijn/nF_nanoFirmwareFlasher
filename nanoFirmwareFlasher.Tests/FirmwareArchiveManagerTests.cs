@@ -45,6 +45,7 @@ namespace nanoFirmwareFlasher.Tests
             using var output = new OutputWriterHelper();
             string testDirectory = TestDirectoryHelper.GetTestDirectory(TestContext);
             string archiveDirectory = Path.Combine(testDirectory, "archive");
+            Directory.CreateDirectory(archiveDirectory);
             Dictionary<string, List<CloudSmithPackageDetail>> packages = GetTargetListHelper.GetTargetList(!isReferenceTarget, false, SupportedPlatform.esp32, false)
                                                                             .GroupBy(p => p.Name)
                                                                             .ToDictionary(g => g.Key, g => g.ToList());
@@ -58,16 +59,15 @@ namespace nanoFirmwareFlasher.Tests
                     foreach (CloudSmithPackageDetail p in packageList)
                     {
                         var version = Version.Parse(p.Version);
-                        if (packageLatestVersion is null)
+                        if (packageLatestVersion is null || version > latest)
                         {
+                            packageOldVersion = packageLatestVersion ?? p;
                             packageLatestVersion = p;
                             latest = version;
                         }
-                        else if (version > latest)
+                        else
                         {
-                            packageOldVersion ??= packageLatestVersion;
-                            packageLatestVersion = p;
-                            latest = version;
+                            packageOldVersion = p;
                         }
                     }
                 }
@@ -76,6 +76,14 @@ namespace nanoFirmwareFlasher.Tests
             {
                 Assert.Inconclusive("No target found in CloudSmith with two firmware versions");
             }
+
+            // Other target should not be deleted, even if keepAllVersions = false
+            string otherTarget = "OTHER_TARGET";
+            string otherTargetVersion = "1.0.0.0";
+            string otherTargetBasePath = Path.Combine(archiveDirectory, $"{otherTarget}-{otherTargetVersion}.zip");
+            File.WriteAllText(otherTargetBasePath, "");
+            File.WriteAllText(otherTargetBasePath + ".json", $@"{{ ""Name"": ""{otherTarget}"", ""Version"": ""{otherTargetVersion}"", ""Platform"": ""{SupportedPlatform.esp32}"" }}");
+
             output.Reset();
             #endregion
 
@@ -99,9 +107,10 @@ namespace nanoFirmwareFlasher.Tests
 
             output.AssertAreEqual("");
             Assert.IsNotNull(list);
-            Assert.AreEqual(
-                $"{packageOldVersion.Name} {packageOldVersion.Version}",
-                string.Join("\n", from p in list select $"{p.Name} {p.Version}"));
+            string present = string.Join("\n", from p in list select $"{p.Name} {p.Version}");
+            Assert.IsTrue(present.Contains($"{packageOldVersion.Name} {packageOldVersion.Version}"));
+            Assert.IsFalse(present.Contains($"{packageLatestVersion.Name} {packageLatestVersion.Version}"));
+            Assert.IsTrue(present.Contains($"{otherTarget} {otherTargetVersion}"));
 
             // List of esp32 packages
             output.Reset();
@@ -109,9 +118,10 @@ namespace nanoFirmwareFlasher.Tests
 
             output.AssertAreEqual("");
             Assert.IsNotNull(list);
-            Assert.AreEqual(
-                $"{packageOldVersion.Name} {packageOldVersion.Version}",
-                string.Join("\n", from p in list select $"{p.Name} {p.Version}"));
+            present = string.Join("\n", from p in list select $"{p.Name} {p.Version}");
+            Assert.IsTrue(present.Contains($"{packageOldVersion.Name} {packageOldVersion.Version}"));
+            Assert.IsFalse(present.Contains($"{packageLatestVersion.Name} {packageLatestVersion.Version}"));
+            Assert.IsTrue(present.Contains($"{otherTarget} {otherTargetVersion}"));
 
             // List of stm32 packages - no match
             output.Reset();
@@ -146,7 +156,7 @@ namespace nanoFirmwareFlasher.Tests
 
             output.AssertAreEqual("");
             Assert.IsNotNull(list);
-            string present = string.Join("\n", from p in list select $"{p.Name} {p.Version}");
+            present = string.Join("\n", from p in list select $"{p.Name} {p.Version}");
             Assert.IsTrue(present.Contains($"{packageLatestVersion.Name} {packageLatestVersion.Version}"), "New version");
             Assert.AreEqual(keepAllVersions, present.Contains($"{packageOldVersion.Name} {packageOldVersion.Version}"), "Old version");
             #endregion
